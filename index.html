@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Learn with Subtitles</title>
+<style>
+  :root{
+    color-scheme:dark;
+    --bg:#0b0d12; --panel:#161a23; --panel2:#1d222d; --border:#2a3040;
+    --text:#e8ebf2; --muted:#8892a6; --accent:#7c9fff; --accent2:#5eead4;
+    --ok:#4ade80; --bad:#f87171;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;min-height:100vh;background:
+      radial-gradient(1200px 600px at 50% -10%, #1a2036 0%, var(--bg) 60%);
+    color:var(--text);font-family:"Segoe UI",system-ui,sans-serif;
+    display:flex;flex-direction:column;align-items:center;gap:18px;padding:28px 16px 60px;
+  }
+  header{text-align:center;max-width:720px}
+  h1{font-size:22px;font-weight:700;margin:0 0 6px;
+     background:linear-gradient(90deg,var(--accent),var(--accent2));
+     -webkit-background-clip:text;background-clip:text;color:transparent}
+  header p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+
+  .card{width:100%;max-width:960px;background:var(--panel);border:1px solid var(--border);
+        border-radius:14px;padding:18px;box-shadow:0 10px 30px -12px rgba(0,0,0,.5)}
+  .uploads{display:flex;gap:14px;flex-wrap:wrap}
+  .field{display:flex;flex-direction:column;gap:6px;flex:1;min-width:190px}
+  .field.optional{opacity:.9}
+  .field label{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.02em}
+  .field small{color:var(--muted);font-weight:400;font-size:11px}
+  .filebtn{position:relative;background:var(--panel2);border:1px dashed var(--border);
+        border-radius:10px;padding:14px 10px;text-align:center;font-size:12px;color:var(--muted);
+        cursor:pointer;transition:border-color .15s,color .15s}
+  .filebtn:hover{border-color:var(--accent);color:var(--text)}
+  .filebtn.has-file{border-style:solid;border-color:var(--accent2);color:var(--text)}
+  .filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+  select{width:100%;background:var(--panel2);color:var(--text);border:1px solid var(--border);
+         border-radius:8px;padding:8px;font-size:13px}
+
+  .stage{position:relative;width:100%;max-width:960px;background:#000;border-radius:14px;
+         overflow:hidden;box-shadow:0 20px 40px -18px rgba(0,0,0,.7)}
+  video{width:100%;display:block;max-height:70vh;background:#000}
+  .sub-pt{position:absolute;left:0;right:0;bottom:8%;text-align:center;color:#fff;
+         text-shadow:0 0 6px #000,0 0 10px #000;font-size:clamp(14px,2.2vw,22px);
+         padding:0 24px;pointer-events:none;font-weight:500}
+
+  .panel{width:100%;max-width:960px}
+  .target{font-size:clamp(22px,4vw,34px);letter-spacing:.5px;line-height:1.6;
+          min-height:1.6em;word-break:keep-all;padding:4px 2px}
+  .target .ok{color:var(--ok)}
+  .target .bad{color:var(--bad);text-decoration:underline}
+  .target .pending{color:#4b5468}
+  input#typer{width:100%;font-size:22px;padding:14px 16px;background:var(--panel2);
+        color:var(--text);border:1px solid var(--border);border-radius:10px;
+        outline:none;transition:border-color .15s,box-shadow .15s}
+  input#typer:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,159,255,.15)}
+  input#typer.correct{border-color:var(--ok);box-shadow:0 0 0 3px rgba(74,222,128,.15)}
+  .row{display:flex;justify-content:space-between;align-items:center;margin-top:10px;
+       font-size:12px;color:var(--muted)}
+  button{background:var(--panel2);color:var(--text);border:1px solid var(--border);
+        border-radius:8px;padding:8px 14px;cursor:pointer;font-size:12px;font-weight:600;
+        transition:border-color .15s,background .15s}
+  button:hover{border-color:var(--accent);background:#232a3a}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>Learn with Subtitles</h1>
+  <p>Watch the line, then type the primary subtitle to unlock the rest of the
+     video — meanwhile, read the secondary subtitle overlaid on it.</p>
+</header>
+
+<div class="card">
+  <div class="uploads">
+    <div class="field">
+      <label>Video</label>
+      <div class="filebtn" id="btnVideo">Choose video file<input id="fVideo" type="file" accept="video/*"></div>
+    </div>
+    <div class="field">
+      <label>Primary subtitle <small>(you type it)</small></label>
+      <div class="filebtn" id="btnPrimary">Choose .srt<input id="fPrimary" type="file" accept=".srt"></div>
+    </div>
+    <div class="field">
+      <label>Secondary subtitle <small>(shown on video)</small></label>
+      <div class="filebtn" id="btnSecondary">Choose .srt<input id="fSecondary" type="file" accept=".srt"></div>
+    </div>
+    <div class="field optional">
+      <label>Alternate audio <small>(optional — another language/dub)</small></label>
+      <div class="filebtn" id="btnAudio">Choose audio file(s)<input id="fAudio" type="file" accept="audio/*" multiple></div>
+    </div>
+    <div class="field optional hidden" id="audioPickerField">
+      <label>Active audio track</label>
+      <select id="audioSelect"></select>
+    </div>
+  </div>
+</div>
+
+<div class="stage">
+  <video id="video" controls></video>
+  <audio id="audioTrack"></audio>
+  <div id="subPt" class="sub-pt"></div>
+</div>
+
+<div class="card panel">
+  <div id="target" class="target">Choose a video and a primary subtitle to get started…</div>
+  <input id="typer" type="text" placeholder="type the line here…" disabled autocomplete="off" autocorrect="off" spellcheck="false">
+  <div class="row">
+    <span id="progress"></span>
+    <button id="skip">Skip line (Tab)</button>
+  </div>
+</div>
+
+<script>
+function parseSRT(text){
+  text = text.replace(/^﻿/, '').replace(/\r\n/g,'\n');
+  const blocks = text.split(/\n\n+/);
+  const cues = [];
+  for(const block of blocks){
+    const lines = block.split('\n').filter(l=>l.length);
+    if(lines.length < 2) continue;
+    let i = 0;
+    if(/^\d+$/.test(lines[0].trim())) i = 1;
+    const timeLine = lines[i];
+    const m = timeLine && timeLine.match(/(\d\d):(\d\d):(\d\d)[,.](\d\d\d)\s*-->\s*(\d\d):(\d\d):(\d\d)[,.](\d\d\d)/);
+    if(!m) continue;
+    const start = (+m[1]*3600)+(+m[2]*60)+(+m[3])+(+m[4]/1000);
+    const end   = (+m[5]*3600)+(+m[6]*60)+(+m[7])+(+m[8]/1000);
+    const rawText = lines.slice(i+1).join('\n')
+      .replace(/\{[^}]*\}/g,'')   // ASS position tags like {\an8}
+      .replace(/<[^>]+>/g,'')     // html tags
+      .trim();
+    if(!rawText) continue;
+    cues.push({start, end, text: rawText});
+  }
+  cues.sort((a,b)=>a.start-b.start);
+  return cues;
+}
+
+const video = document.getElementById('video');
+const subPt = document.getElementById('subPt');
+const audioPickerField = document.getElementById('audioPickerField');
+const audioSelect = document.getElementById('audioSelect');
+const audioTrack = document.getElementById('audioTrack');
+const targetEl = document.getElementById('target');
+const typer = document.getElementById('typer');
+const progressEl = document.getElementById('progress');
+const skipBtn = document.getElementById('skip');
+
+let primaryCues = [], secondaryCues = [];
+let idx = 0;             // index of the next cue whose END we're watching for
+let gateActive = false;  // true while paused after a cue, waiting for correct typing
+let started = false;
+let programmaticSeek = false; // true while *this app* is moving currentTime, not the user
+
+function seekVideo(t){
+  programmaticSeek = true;
+  video.currentTime = t;
+}
+
+function markFilePicked(btnId, name){
+  const btn = document.getElementById(btnId);
+  btn.classList.add('has-file');
+  btn.firstChild.textContent = name;
+}
+
+document.getElementById('fVideo').addEventListener('change', e=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  video.src = URL.createObjectURL(f);
+  markFilePicked('btnVideo', f.name);
+  maybeStart();
+});
+
+// Chrome doesn't expose extra audio tracks from MKV containers via a native
+// <video>, so a track extracted separately (e.g. with ffmpeg -map 0:a:N -c copy)
+// plays in its own <audio>, kept in sync with the video (which is muted meanwhile).
+const extraTracks = {}; // label -> object URL
+
+function refreshAudioSelect(){
+  const labels = Object.keys(extraTracks);
+  if(!labels.length){ audioPickerField.classList.add('hidden'); video.muted = false; return; }
+  audioPickerField.classList.remove('hidden');
+  const prev = audioSelect.value;
+  audioSelect.innerHTML = '<option value="">Original video audio</option>' +
+    labels.map(l=>`<option value="${l}">${l}</option>`).join('');
+  audioSelect.value = labels.includes(prev) ? prev : labels[labels.length-1];
+  applySelectedTrack();
+}
+
+function applySelectedTrack(){
+  const label = audioSelect.value;
+  const wasPlaying = !video.paused;
+  if(!label || !extraTracks[label]){
+    video.muted = false;
+    audioTrack.pause();
+    return;
+  }
+  audioTrack.src = extraTracks[label];
+  audioTrack.currentTime = video.currentTime;
+  video.muted = true;
+  if(wasPlaying) audioTrack.play();
+}
+
+audioSelect.addEventListener('change', applySelectedTrack);
+
+document.getElementById('fAudio').addEventListener('change', e=>{
+  const files = Array.from(e.target.files);
+  if(!files.length) return;
+  for(const f of files){
+    const label = f.name.replace(/\.[^.]+$/, '');
+    extraTracks[label] = URL.createObjectURL(f);
+  }
+  markFilePicked('btnAudio', files.length > 1 ? `${files.length} files` : files[0].name);
+  refreshAudioSelect();
+});
+
+// keeps the extra <audio> in sync with everything the <video> does
+['play','pause'].forEach(evt=>{
+  video.addEventListener(evt, ()=>{
+    if(!video.muted) return;
+    audioTrack.currentTime = video.currentTime;
+    if(video.paused) audioTrack.pause(); else audioTrack.play();
+  });
+});
+video.addEventListener('timeupdate', ()=>{
+  if(!video.muted) return;
+  if(Math.abs(audioTrack.currentTime - video.currentTime) > 0.3){
+    audioTrack.currentTime = video.currentTime;
+  }
+});
+document.getElementById('fPrimary').addEventListener('change', e=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  markFilePicked('btnPrimary', f.name);
+  f.text().then(t=>{ primaryCues = parseSRT(t); maybeStart(); });
+});
+document.getElementById('fSecondary').addEventListener('change', e=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  markFilePicked('btnSecondary', f.name);
+  f.text().then(t=>{ secondaryCues = parseSRT(t); });
+});
+
+function maybeStart(){
+  if(video.src && primaryCues.length && !started){
+    started = true;
+    if(video.readyState >= 1) beginPlayback();
+    else video.addEventListener('loadedmetadata', beginPlayback, {once:true});
+  }
+}
+
+function norm(s){ return s.normalize('NFC').trim().replace(/\s+/g,' '); }
+
+function beginPlayback(){
+  seekVideo(0);
+  video.play();
+  targetEl.textContent = 'Watching… the typing box unlocks at the end of the line.';
+  progressEl.textContent = `Line 1 / ${primaryCues.length}`;
+}
+
+// called once video reaches the end of primaryCues[i]: pause and demand typing
+function openGate(i){
+  gateActive = true;
+  typer.value = '';
+  typer.disabled = false;
+  typer.className = '';
+  typer.focus();
+  progressEl.textContent = `Line ${i+1} / ${primaryCues.length}`;
+  renderTarget();
+}
+
+function closeGate(){
+  gateActive = false;
+  typer.disabled = true;
+  idx++;
+  targetEl.textContent = idx >= primaryCues.length
+    ? 'End of lines. The video can now play freely.'
+    : 'Watching… the typing box unlocks at the end of the line.';
+  video.play();
+}
+
+function renderTarget(){
+  const cue = primaryCues[idx];
+  const target = cue.text;
+  const typed = typer.value;
+  let html = '';
+  for(let i=0;i<target.length;i++){
+    const ch = target[i];
+    if(i < typed.length){
+      html += `<span class="${ch===typed[i] ? 'ok':'bad'}">${escapeHtml(ch)}</span>`;
+    } else {
+      html += `<span class="pending">${escapeHtml(ch)}</span>`;
+    }
+  }
+  targetEl.innerHTML = html;
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+typer.addEventListener('input', ()=>{
+  if(!gateActive) return;
+  renderTarget();
+  const cue = primaryCues[idx];
+  if(norm(typer.value) === norm(cue.text)){
+    typer.className = 'correct';
+    closeGate();
+  }
+});
+
+skipBtn.addEventListener('click', ()=>{ if(gateActive) closeGate(); });
+document.addEventListener('keydown', e=>{
+  if(e.key === 'Tab' && gateActive){ e.preventDefault(); closeGate(); }
+});
+
+video.addEventListener('timeupdate', ()=>{
+  // update secondary subtitle overlay (not gated, always in sync)
+  const t = video.currentTime;
+  const s = secondaryCues.find(c => t >= c.start && t <= c.end);
+  subPt.textContent = s ? s.text : '';
+
+  // pause exactly at the end of the current primary cue and demand typing
+  if(!gateActive && idx < primaryCues.length){
+    const cue = primaryCues[idx];
+    if(t >= cue.end){
+      seekVideo(cue.end);
+      video.pause();
+      openGate(idx);
+    }
+  }
+});
+
+// user dragged the native seek bar: resync which cue we're gating on
+video.addEventListener('seeked', ()=>{
+  if(programmaticSeek){ programmaticSeek = false; return; }
+  if(!primaryCues.length) return;
+  let i = primaryCues.findIndex(c => c.end > video.currentTime);
+  if(i === -1) i = primaryCues.length;
+  idx = i;
+  if(gateActive){ gateActive = false; typer.disabled = true; typer.value = ''; }
+  targetEl.textContent = idx >= primaryCues.length
+    ? 'End of lines. The video can now play freely.'
+    : 'Watching… the typing box unlocks at the end of the line.';
+  progressEl.textContent = `Line ${Math.min(idx+1, primaryCues.length)} / ${primaryCues.length}`;
+});
+</script>
+</body>
+</html>
